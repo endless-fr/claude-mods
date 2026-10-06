@@ -1,0 +1,14 @@
+{
+  "name": "endless-claude-mods",
+  "description": "Claude Code mods built by endless",
+  "owner": {
+    "name": "endless"
+  },
+  "plugins": [
+    {
+      "name": "context-weather",
+      "source": "./mods/context-weather",
+      "description": "One band above the prompt: context size with its weather, your 5-hour and 7-day limits against the clock, the prompt cache countdown, session cost, a heavy-thread warning and the subagents running."
+    }
+  ]
+}
