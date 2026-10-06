@@ -6,6 +6,13 @@ export function split(path: string): { name: string; dir: string } {
   return at < 0 ? { name: short, dir: '' } : { name: short.slice(at + 1), dir: short.slice(0, at) || '/' }
 }
 
+/** The path as Claude Code writes it: from the session's folder when inside it. */
+export function relativeTo(cwd: string, path: string): string {
+  const base = cwd.endsWith('/') ? cwd : `${cwd}/`
+  if (cwd !== '' && path.startsWith(base)) return path.slice(base.length)
+  return split(path).dir === '' ? path : path.replace(/^\/Users\/[^/]+/, '~')
+}
+
 const SYSTEM_TINTS: Record<string, string> = {
   ts: '#0A84FF', tsx: '#0A84FF', js: '#FFD60A', jsx: '#FFD60A', json: '#8E8E93', md: '#5E5CE6',
   py: '#30D158', css: '#FF375F', html: '#FF9F0A', swift: '#FF9F0A', ipynb: '#FF9F0A',
