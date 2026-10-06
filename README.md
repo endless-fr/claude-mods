@@ -27,6 +27,7 @@ If a session is already open, run `/reload-plugins` in it to load the mod.
 ## Mods
 
 - [context-weather](mods/context-weather): one band above the prompt that shows how full the context is, how fast you are using your 5-hour and 7-day limits, when the prompt cache lapses, what the session has cost, and which subagents are running.
+- [session-recap](mods/session-recap): when you `/clear` a conversation, a pane opens with a recap of it as a card to share: time worked, turns, tool calls, files and lines changed, test runs and cost.
 
 ## Add a mod
 

@@ -9,6 +9,11 @@
       "name": "context-weather",
       "source": "./mods/context-weather",
       "description": "One band above the prompt: context size with its weather, your 5-hour and 7-day limits against the clock, the prompt cache countdown, session cost, a heavy-thread warning and the subagents running."
+    },
+    {
+      "name": "session-recap",
+      "source": "./mods/session-recap",
+      "description": "A recap of the conversation you just cleared, as a card to share: time worked, turns, tool calls, files and lines changed, test runs and cost."
     }
   ]
 }
