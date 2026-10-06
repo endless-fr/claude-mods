@@ -10,6 +10,8 @@ declare module 'claude-code' {
       selected: string | null
       /** Whether the terminal docks panes beside the transcript (fullscreen), as /changed-files last saw it. */
       docks: boolean | null
+      /** The key of the terminal row the pane's focus ring is on. */
+      cursor: string | null
     }
   }
 }

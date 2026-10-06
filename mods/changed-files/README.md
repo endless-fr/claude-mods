@@ -15,13 +15,13 @@ The list starts over each time you send a message, so it only ever shows what th
 
 A file Claude changed and then put back exactly as it was leaves the list.
 
-In the Desktop app the header is drawn as an image that takes the pane's width, and the tiles are dark, as in Session Recap. In the terminal the pane lists the same files as text. Each file's name is its control: click it (fullscreen layout) or press its digit, 1 to 9, while the pane has the keyboard.
+In the Desktop app the header is drawn as an image that takes the pane's width, and the tiles are dark, as in Session Recap. In the terminal the pane reads as Claude Code's own lists: a ❯ on the focused row, each file's letter, its path from the session's folder and its line counts. ↑ and ↓ move, Enter unfolds the diff under the row, Escape hands the keyboard back to the prompt.
 
 ## Using it
 
 - In the Desktop app the pane opens by itself the first time Claude changes a file.
 - In the terminal it opens by itself only once it can dock beside the transcript: in the fullscreen layout, after you ran `/changed-files` once. On the main screen (`CLAUDE_CODE_NO_FLICKER=0`, tmux) a pane sits above the prompt, so there it waits for `/changed-files`.
-- `/changed-files` opens the pane and gives it the keyboard, so the digits unfold a diff at once. Later, `ctrl+x tab` takes you back to it.
+- `/changed-files` opens the pane and gives it the keyboard, so ↑, ↓ and Enter work at once. Later, `ctrl+x tab` takes you back to it.
 
 ## Install
 

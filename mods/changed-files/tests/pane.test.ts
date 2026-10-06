@@ -52,8 +52,6 @@ for (const surface of ['terminal', 'desktop'] as const) {
       await pane.pointer({ type: 'down', x: 2, y: 0, button: 'left', in: keyOf(A) } as never)
       await pane.pointer({ type: 'up', x: 2, y: 0, button: 'left', in: keyOf(A) } as never)
     } else {
-      // The name is the control, with the digit of its place: b.txt, newest, is 1.
-      expect(drawn).toContain('"hotkey":"2"')
       await pane.press({ key: keyOf(A) } as never)
     }
     drawn = JSON.stringify(await pane.drawn())

@@ -3,7 +3,7 @@ import type { EngineInterface, Register } from 'claude-code'
 
 import type { ChangedFile } from '../types'
 import { altOf, headerSvg } from './card'
-import { badgeOf, barSvg, iconSvg, keyOf, split } from './designs'
+import { badgeOf, barSvg, iconSvg, keyOf, relativeTo, split } from './designs'
 import { diffOf } from './diff'
 
 const PANE = 'changed-files'
@@ -13,6 +13,7 @@ const WRITE_TOOLS = ['Write', 'Edit', 'MultiEdit', 'NotebookEdit']
 const files = atom({ plugin: 'changed-files', key: 'files' } as const, [] as ChangedFile[])
 const originals = atom({ plugin: 'changed-files', key: 'originals' } as const, {} as Record<string, string | null>)
 const selected = atom({ plugin: 'changed-files', key: 'selected' } as const, null as string | null)
+const cursor = atom({ plugin: 'changed-files', key: 'cursor' } as const, null as string | null)
 const docks = atom({ plugin: 'changed-files', key: 'docks' } as const, null as boolean | null)
 
 function targetOf(e: { tool: string }): string | undefined {
@@ -70,6 +71,7 @@ export const register: Register = on => {
       await update($, files, () => [])
       await update($, originals, () => ({}))
       await update($, selected, () => null)
+      await update($, cursor, () => null)
     }
 
     return next(e)
@@ -112,6 +114,14 @@ export const register: Register = on => {
     return {}
   })
 
+  // The terminal's ❯ follows the focus ring, as in Claude Code's own lists.
+  on('ui.focus', { requestId: PANE }, async ($, e, next) => {
+    const result = await next(e)
+    if (result.deny === undefined) await update($, cursor, () => e.element ?? null)
+
+    return result
+  })
+
   on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e) => {
     const table = $.ui.resolve(e)
     const { Box, Text, Button, Code } = table
@@ -121,7 +131,7 @@ export const register: Register = on => {
     const shown = await read($, selected)
     const toggle = (path: string) => () => void update($, selected, now => (now === path ? null : path))
 
-    const rows = list.map((file, index) => {
+    const rows = list.map(file => {
       const { name, dir } = split(file.path)
       const isOpen = shown === file.path
       const badge = badgeOf(file.isNew)
@@ -158,27 +168,7 @@ export const register: Register = on => {
         )
       }
 
-      // The terminal: the name is the control, pressed by a click or its digit.
-      const hotkey = index < 9 ? String(index + 1) : undefined
-      return (
-        <Box flexDirection="column" borderStyle="round" borderColor={isOpen ? '#0A84FF' : undefined} borderDimColor={!isOpen} paddingX={1}>
-          <Box flexDirection="row" gap={1}>
-            <Text bold color={badge.color}>
-              {badge.letter}
-            </Text>
-            <Box flexDirection="column" flexGrow={1} flexShrink={1}>
-              <Button key={keyOf(file.path)} plain hotkey={hotkey} onPress={toggle(file.path)}>
-                {name}
-              </Button>
-              <Text dimColor wrap="truncate-start">
-                {dir}
-              </Text>
-            </Box>
-            <Text dimColor>{isOpen ? '▾' : '▸'}</Text>
-          </Box>
-          {isOpen ? <Code source={file.diff} format="diff" path={file.path} /> : null}
-        </Box>
-      )
+      return null
     })
 
     if (Svg) {
@@ -190,25 +180,61 @@ export const register: Register = on => {
       )
     }
 
+    // The terminal: Claude Code's own list, a ❯ on the focused row, each row
+    // a file's letter and path, its diff unfolded beneath it.
+    const cwd = await $.session.cwd().catch(() => '')
+    const at = await read($, cursor)
     const added = list.reduce((sum, file) => sum + file.added, 0)
     const removed = list.reduce((sum, file) => sum + file.removed, 0)
 
-    return (
-      <Box flexDirection="column" paddingX={1} gap={1}>
-        <Box flexDirection="column">
+    if (list.length === 0) {
+      return (
+        <Box flexDirection="column" paddingX={1}>
           <Text bold>Fichiers modifiés</Text>
-          {list.length === 0 ? (
-            <Text dimColor>Aucune modification. Les fichiers modifiés par Claude apparaîtront ici.</Text>
-          ) : (
-            <Box gap={1}>
-              <Text dimColor>{altOf(list)}</Text>
-              <Text color="#30D158">{`+${added}`}</Text>
-              <Text color="#FF453A">{`−${removed}`}</Text>
-            </Box>
-          )}
-          {list.length > 0 ? <Text dimColor>Chiffre ou clic : afficher la diff (ctrl+x tab pour revenir au panneau)</Text> : null}
+          <Text dimColor>Aucune modification depuis votre dernier message.</Text>
         </Box>
-        {rows}
+      )
+    }
+
+    return (
+      <Box flexDirection="column" paddingX={1}>
+        <Box gap={1}>
+          <Text bold>Fichiers modifiés</Text>
+          <Text dimColor>·</Text>
+          <Text dimColor>{list.length === 1 ? '1 fichier' : `${list.length} fichiers`}</Text>
+          <Text color="green">{`+${added}`}</Text>
+          <Text color="red">{`-${removed}`}</Text>
+        </Box>
+        <Box flexDirection="column" marginTop={1}>
+          {list.map((file, index) => {
+            const key = keyOf(file.path)
+            const isOpen = shown === file.path
+            const isAt = at === key
+            const badge = badgeOf(file.isNew)
+            return (
+              <Box key={`row-${key}`} flexDirection="column">
+                <Box gap={1}>
+                  <Text color="#0A84FF">{isAt ? '❯' : ' '}</Text>
+                  <Text bold color={badge.color}>
+                    {badge.letter}
+                  </Text>
+                  <Button key={key} plain autoFocus={index === 0 ? true : undefined} onPress={toggle(file.path)}>
+                    {relativeTo(cwd, file.path)}
+                  </Button>
+                  <Text dimColor>{`+${file.added} -${file.removed}`}</Text>
+                </Box>
+                {isOpen ? (
+                  <Box paddingLeft={4} marginBottom={1}>
+                    <Code source={file.diff} format="diff" path={file.path} />
+                  </Box>
+                ) : null}
+              </Box>
+            )
+          })}
+        </Box>
+        <Box marginTop={1}>
+          <Text dimColor>↑/↓ pour choisir · Entrée pour la diff · Échap pour revenir au prompt</Text>
+        </Box>
       </Box>
     )
   })
