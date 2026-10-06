@@ -9,7 +9,7 @@ const A = `${DIR}/a.txt`
 const B = `${DIR}/b.txt`
 
 /** The engine beneath: a disk in memory, which the write tools change and the mod reads back. */
-function world(on: On) {
+function world(on: On, opens: string[] = []) {
   const disk = new Map<string, string>()
   on('tool.call', async (_$, e) => {
     const input = e as Record<string, unknown>
@@ -23,7 +23,10 @@ function world(on: On) {
     if (text === undefined) throw new Error(`ENOENT: ${e.path}`)
     return { value: text }
   })
-  on('ui.open', async () => ({ value: { isPlaced: true } as never }))
+  on('ui.open', async (_$, e) => {
+    opens.push(e.id)
+    return { value: { isPlaced: true } as never }
+  })
   on('prompt.submit', async (_$, e) => ({ text: e.text }))
 }
 
@@ -49,6 +52,8 @@ for (const surface of ['terminal', 'desktop'] as const) {
       await pane.pointer({ type: 'down', x: 2, y: 0, button: 'left', in: keyOf(A) } as never)
       await pane.pointer({ type: 'up', x: 2, y: 0, button: 'left', in: keyOf(A) } as never)
     } else {
+      // The name is the control, with the digit of its place: b.txt, newest, is 1.
+      expect(drawn).toContain('"hotkey":"2"')
       await pane.press({ key: keyOf(A) } as never)
     }
     drawn = JSON.stringify(await pane.drawn())
@@ -68,5 +73,19 @@ for (const surface of ['terminal', 'desktop'] as const) {
     drawn = JSON.stringify(await pane.drawn())
     expect(drawn).toContain('b.txt')
     expect(drawn).not.toContain('a.txt')
+  })
+}
+
+for (const isFullscreen of [false, true]) {
+  test(`terminal ${isFullscreen ? 'fullscreen' : 'main screen'}: opens the pane on its own only as a sidebar`, async ($, on) => {
+    const opens: string[] = []
+    world(on, opens)
+    on('session.surfaces', async () => ({ value: ['terminal'] as never }))
+    on('command.run', async () => ({}))
+
+    await $.command.run({ command: 'changed-files', presentation: { isFullscreen, columns: 160 } } as never)
+    opens.length = 0
+    await write($, A, 'one\n')
+    expect(opens.length).toBe(isFullscreen ? 1 : 0)
   })
 }

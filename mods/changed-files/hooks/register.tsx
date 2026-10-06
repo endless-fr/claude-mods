@@ -13,6 +13,7 @@ const WRITE_TOOLS = ['Write', 'Edit', 'MultiEdit', 'NotebookEdit']
 const files = atom({ plugin: 'changed-files', key: 'files' } as const, [] as ChangedFile[])
 const originals = atom({ plugin: 'changed-files', key: 'originals' } as const, {} as Record<string, string | null>)
 const selected = atom({ plugin: 'changed-files', key: 'selected' } as const, null as string | null)
+const docks = atom({ plugin: 'changed-files', key: 'docks' } as const, null as boolean | null)
 
 function targetOf(e: { tool: string }): string | undefined {
   const input = e as Record<string, unknown>
@@ -32,19 +33,33 @@ async function textOf($: EngineInterface, path: string): Promise<string | null> 
 
 const open = ($: EngineInterface) => $.ui.open({ id: PANE, title: TITLE })
 
+/**
+ * Whether the pane may open on its own: where it lands as a sidebar. The app
+ * docks it; the terminal only in its fullscreen layout, which /changed-files
+ * reports. On the terminal's main screen it would sit above the prompt, so
+ * there it waits for /changed-files.
+ */
+async function mayOpenUnasked($: EngineInterface): Promise<boolean> {
+  const surfaces = await $.session.surfaces().catch(() => [] as const)
+  if (surfaces.some(surface => surface !== 'terminal')) return true
+  return (await read($, docks)) === true
+}
+
 export const register: Register = on => {
   on('session.start', async ($, e, next) => {
     await $.command.register({
       name: 'changed-files',
       description: 'Afficher les fichiers modifiés depuis votre dernier message',
     })
-    if ((await read($, files)).length > 0) void open($)
+    if ((await read($, files)).length > 0 && (await mayOpenUnasked($))) void open($)
 
     return next(e)
   })
 
-  on('command.run', { command: 'changed-files' }, async $ => {
-    const opened = await open($)
+  on('command.run', { command: 'changed-files' }, async ($, e) => {
+    await update($, docks, () => e.presentation.isFullscreen)
+    // Asked for: it takes the keyboard, so the digits unfold a diff at once.
+    const opened = await $.ui.open({ id: PANE, title: TITLE, focus: true })
 
     return opened.isPlaced ? {} : { text: `Le panneau est ouvert mais pas encore affiché : ${opened.reason}` }
   })
@@ -82,7 +97,7 @@ export const register: Register = on => {
       if (added === 0 && removed === 0) return rest
       return [...rest, { path, isNew: before === null, added, removed, diff: source }]
     })
-    if (wasEmpty) void open($).catch(() => undefined)
+    if (wasEmpty && (await mayOpenUnasked($))) void open($).catch(() => undefined)
 
     return ran
   })
@@ -106,7 +121,7 @@ export const register: Register = on => {
     const shown = await read($, selected)
     const toggle = (path: string) => () => void update($, selected, now => (now === path ? null : path))
 
-    const rows = list.map(file => {
+    const rows = list.map((file, index) => {
       const { name, dir } = split(file.path)
       const isOpen = shown === file.path
       const badge = badgeOf(file.isNew)
@@ -143,23 +158,23 @@ export const register: Register = on => {
         )
       }
 
+      // The terminal: the name is the control, pressed by a click or its digit.
+      const hotkey = index < 9 ? String(index + 1) : undefined
       return (
         <Box flexDirection="column" borderStyle="round" borderColor={isOpen ? '#0A84FF' : undefined} borderDimColor={!isOpen} paddingX={1}>
-          <Box flexDirection="row" alignItems="center" gap={1}>
+          <Box flexDirection="row" gap={1}>
             <Text bold color={badge.color}>
               {badge.letter}
             </Text>
             <Box flexDirection="column" flexGrow={1} flexShrink={1}>
-              <Text bold wrap="truncate-end">
+              <Button key={keyOf(file.path)} plain hotkey={hotkey} onPress={toggle(file.path)}>
                 {name}
-              </Text>
+              </Button>
               <Text dimColor wrap="truncate-start">
                 {dir}
               </Text>
             </Box>
-            <Button key={keyOf(file.path)} variant={isOpen ? 'primary' : 'secondary'} onPress={toggle(file.path)}>
-              {isOpen ? 'Masquer' : 'Diff'}
-            </Button>
+            <Text dimColor>{isOpen ? '▾' : '▸'}</Text>
           </Box>
           {isOpen ? <Code source={file.diff} format="diff" path={file.path} /> : null}
         </Box>
@@ -191,6 +206,7 @@ export const register: Register = on => {
               <Text color="#FF453A">{`−${removed}`}</Text>
             </Box>
           )}
+          {list.length > 0 ? <Text dimColor>Chiffre ou clic : afficher la diff (ctrl+x tab pour revenir au panneau)</Text> : null}
         </Box>
         {rows}
       </Box>
