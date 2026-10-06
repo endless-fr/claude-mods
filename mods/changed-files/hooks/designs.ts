@@ -52,7 +52,8 @@ export function barSvg(added: number, removed: number): string {
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 53 9" width="53" height="9">${squares}</svg>`
 }
 
-/** Cursor's (VS Code's) source-control letters and their colours: A for a file added, M for one modified. */
-export function badgeOf(isNew: boolean): { letter: 'A' | 'M'; color: string; label: string } {
-  return isNew ? { letter: 'A', color: '#81B88B', label: 'Ajouté' } : { letter: 'M', color: '#E2C08D', label: 'Modifié' }
+/** Cursor's (VS Code's) source-control letters and their colours: A added, M modified, D deleted. */
+export function badgeOf(file: { isNew: boolean; isDeleted?: boolean }): { letter: 'A' | 'M' | 'D'; color: string; label: string } {
+  if (file.isDeleted) return { letter: 'D', color: '#C74E39', label: 'Supprimé' }
+  return file.isNew ? { letter: 'A', color: '#81B88B', label: 'Ajouté' } : { letter: 'M', color: '#E2C08D', label: 'Modifié' }
 }

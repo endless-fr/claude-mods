@@ -1,7 +1,7 @@
 import type { ClientModule } from 'claude-code'
 
 /** What the pane hands one file's row. */
-export type RowProps = { name: string; dir: string; isOpen: boolean }
+export type RowProps = { name: string; dir: string; isOpen: boolean; isDeleted?: boolean }
 
 /**
  * One file's row on the desktop: its name and where it lives.
@@ -16,7 +16,12 @@ const Row: ClientModule<RowProps> = (props, surface) => {
   return (
     <Box flexDirection="row" alignItems="center" gap={2} width="100%">
       <Box flexDirection="column" flexGrow={1} flexShrink={1}>
-        <Text bold color={props.isOpen ? '#0A84FF' : '#F5F5F7'} wrap="truncate-end">
+        <Text
+          bold
+          strikethrough={props.isDeleted === true}
+          color={props.isOpen ? '#0A84FF' : props.isDeleted ? '#8E8E93' : '#F5F5F7'}
+          wrap="truncate-end"
+        >
           {props.name}
         </Text>
         <Text color="#8E8E93" wrap="truncate-start">

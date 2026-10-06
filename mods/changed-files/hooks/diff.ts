@@ -43,12 +43,13 @@ function opsOf(a: string[], b: string[]): Op[] {
         ops.push({ kind: ' ', text: midA[i] as string, a: head + i, b: head + j })
         i++
         j++
-      } else if (j < m && (i === n || (table[i] as Uint32Array)[j + 1]! >= (table[i + 1] as Uint32Array)[j]!)) {
-        ops.push({ kind: '+', text: midB[j] as string, a: head + i, b: head + j })
-        j++
-      } else {
+      } else if (i < n && (j === m || (table[i + 1] as Uint32Array)[j]! >= (table[i] as Uint32Array)[j + 1]!)) {
+        // On a tie the removed line goes first, as git writes it.
         ops.push({ kind: '-', text: midA[i] as string, a: head + i, b: head + j })
         i++
+      } else {
+        ops.push({ kind: '+', text: midB[j] as string, a: head + i, b: head + j })
+        j++
       }
     }
   }
@@ -64,7 +65,7 @@ export function diffOf(before: string | null, after: string): Diff {
   const added = ops.filter(op => op.kind === '+').length
   const removed = ops.filter(op => op.kind === '-').length
 
-  const hunks: string[] = []
+  const hunks: Op[][] = []
   let k = 0
   while (k < ops.length) {
     if ((ops[k] as Op).kind === ' ') {
@@ -84,19 +85,31 @@ export function diffOf(before: string | null, after: string): Diff {
       end = gap
     }
     const stop = Math.min(ops.length, end + CONTEXT)
-    const slice = ops.slice(start, stop)
-    const first = slice[0] as Op
-    const countA = slice.filter(op => op.kind !== '+').length
-    const countB = slice.filter(op => op.kind !== '-').length
-    const header = `@@ -${countA ? first.a + 1 : first.a},${countA} +${countB ? first.b + 1 : first.b},${countB} @@`
-    hunks.push([header, ...slice.map(op => `${op.kind}${op.text.replace(/[\u0000-\u0008\u000b-\u001f]/g, '')}`)].join('\n'))
+    hunks.push(ops.slice(start, stop))
     k = stop
   }
 
+  // Whole hunks while they fit; the first that does not is cut to the room
+  // left, its header counting the lines kept, so a long one still shows.
   let source = ''
-  for (const hunk of hunks) {
-    if (source.length + hunk.length + 1 > ROOM) break
-    source += (source ? '\n' : '') + hunk
+  for (const slice of hunks) {
+    const lines = slice.map(op => `${op.kind}${op.text.replace(/[\u0000-\u0008\u000b-\u001f\u007f]/g, '')}`)
+    let kept = lines.length
+    let length = lines.reduce((sum, line) => sum + line.length + 1, 0)
+    const room = ROOM - source.length - 40
+    if (length > room) {
+      length = 0
+      kept = 0
+      while (kept < lines.length && length + (lines[kept] as string).length + 1 <= room) length += (lines[kept++] as string).length + 1
+      if (kept === 0) break
+    }
+    const part = slice.slice(0, kept)
+    const first = part[0] as Op
+    const countA = part.filter(op => op.kind !== '+').length
+    const countB = part.filter(op => op.kind !== '-').length
+    const header = `@@ -${countA ? first.a + 1 : first.a},${countA} +${countB ? first.b + 1 : first.b},${countB} @@`
+    source += (source ? '\n' : '') + [header, ...lines.slice(0, kept)].join('\n')
+    if (kept < lines.length) break
   }
 
   return { source, added, removed }
