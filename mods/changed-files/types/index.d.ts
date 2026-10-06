@@ -8,6 +8,8 @@ declare module 'claude-code' {
       originals: Record<string, string | null>
       /** The file whose diff is unfolded. */
       selected: string | null
+      /** Whether the terminal docks panes beside the transcript (fullscreen), as /changed-files last saw it. */
+      docks: boolean | null
     }
   }
 }
