@@ -202,7 +202,7 @@ export const register: Register = on => {
     const shown = e.props.hasSurvey ? [] : segments(thread, await $.clock.now())
     let band: RenderElement
     if (shown.length > 0 && e.surface === 'desktop') band = desktopBand($.ui.resolve(e), shown)
-    else if (shown.length > 0 && e.surface === 'terminal') band = terminalBand($.ui.resolve(e), shown, e.props.bodyColumns)
+    else if (shown.length > 0 && e.surface === 'terminal') band = terminalBand($.ui.resolve(e), shown, e.props.bodyColumns, e.props.maxRows)
     else return next(e)
 
     // A mod placed after this one keeps its place in the band, under our line.

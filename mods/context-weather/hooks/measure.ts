@@ -48,6 +48,8 @@ export type ContextSegment = {
   sky: Sky
   tone: Tone
   tokens: string
+  /** Share of the window held, as `21%`. */
+  share: string
   /** What each recent turn added, 0 to 1 against the largest of them. */
   bars: number[]
   delta: string
@@ -270,6 +272,7 @@ function contextSegment(thread: Thread): ContextSegment | null {
     sky,
     tone,
     tokens: tokens(reading.tokens),
+    share: `${reading.percent}%`,
     bars: added.map(one => Math.max(0, one) / largest),
     delta: last > 0 ? `+${tokens(last)}` : last < 0 ? `−${tokens(-last)}` : '',
     tip: `${name} · ${reading.percent}% of ${tokens(reading.window)}`,

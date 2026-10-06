@@ -98,17 +98,17 @@ export async function request($: Engine, w: ReturnType<typeof world>, usage: Par
   await stream.result
 }
 
-const props = (bodyColumns: number) => ({
+const props = (bodyColumns: number, maxRows: number) => ({
   hasSurvey: false,
   isWorking: false,
-  maxRows: 4,
+  maxRows,
   bodyColumns,
-  scroll: { offset: 0, bodyRows: 4 },
+  scroll: { offset: 0, bodyRows: maxRows },
   view: {},
 })
 
-export const band = ($: Engine, surface: 'terminal' | 'desktop', columns = 200) =>
-  $.ui.mount({ plugin: PLUGIN, surface, component: 'AbovePrompt', props: props(columns) })
+export const band = ($: Engine, surface: 'terminal' | 'desktop', columns = 200, rows = 4) =>
+  $.ui.mount({ plugin: PLUGIN, surface, component: 'AbovePrompt', props: props(columns, rows) })
 
 /** Everything the band shows as text, in reading order. */
 export async function shown($: Engine, surface: 'terminal' | 'desktop', columns = 200) {
@@ -139,8 +139,8 @@ export async function colorOf($: Engine, text: string | RegExp) {
 }
 
 /** The terminal line exactly as drawn, character for character. */
-export async function line($: Engine, columns: number) {
-  const ui = await band($, 'terminal', columns)
+export async function line($: Engine, columns: number, rows = 4) {
+  const ui = await band($, 'terminal', columns, rows)
   const texts = await ui.findAll({ type: 'Text' })
   await ui.unmount()
 

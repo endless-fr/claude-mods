@@ -94,7 +94,7 @@ test('says expired in red once the cache has lapsed, with what the next message 
   await request($, w, HIT)
   await w.clock.advance(61 * MINUTE)
 
-  expect(await shown($, 'terminal')).toContain('cache expired · 640k to rewrite')
+  expect(await shown($, 'terminal')).toContain('cache expired 640k to rewrite')
   expect(await colorOf($, 'expired')).toBe('red')
 })
 
@@ -116,7 +116,7 @@ test('names a model switch as the cause of a rewrite', async ($, on) => {
   await w.clock.advance(MINUTE)
   await request($, w, { ...REWRITE, model: 'claude-sonnet-5-5' })
 
-  expect(await shown($, 'terminal')).toContain('cache 1h · missed: model changed')
+  expect(await shown($, 'terminal')).toContain('cache 1h missed: model changed')
 })
 
 test('names a lapse as the cause of a rewrite', async ($, on) => {
@@ -183,7 +183,7 @@ test('learns five minutes from a rewrite within the hour', async ($, on) => {
   await request($, w, REWRITE)
   await w.clock.advance(2 * MINUTE)
 
-  expect(await shown($, 'terminal')).toContain('cache 3m · missed: expired')
+  expect(await shown($, 'terminal')).toContain('cache 3m missed: expired')
 })
 
 test('follows FORCE_PROMPT_CACHING_5M over everything else', async ($, on) => {

@@ -62,11 +62,11 @@ test('yields the band to a survey', async ($, on) => {
   expect(await ui.find({ text: '312k' })).toBeUndefined()
 })
 
-test('names the weather in the terminal by how full the window is', async ($, on) => {
+test('fills the terminal glyph as the window fills', async ($, on) => {
   const w = world(on)
   await start($)
 
-  for (const [percent, glyph] of [[10, '☀'], [40, '☁'], [65, '☂'], [80, 'ϟ'], [95, '▲']] as const) {
+  for (const [percent, glyph] of [[10, '○'], [40, '◔'], [65, '◑'], [80, '◕'], [95, '●']] as const) {
     w.context(percent * 10_000)
     await turn($)
     expect(await shown($, 'terminal')).toStartWith(glyph)

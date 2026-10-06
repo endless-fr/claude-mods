@@ -2,24 +2,26 @@
 
 One band above the Claude Code prompt that says how the session is doing: how full the context is, how fast you are using your limits, whether the prompt cache is still warm, what the session has cost, and which subagents are running.
 
-In the terminal it is one line:
+In the terminal it is one capsule around one line:
 
 ```text
-☁ 312k ▂▃▅▂█ +27.4k │ 5h ━━━┃──── 48% 2h 54m │ 7d ━━━━┃─── 52% 3d 2h │ cache 41m │ $18.42 +$2.31 │ 3 agents
+╭─────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ ◔ 312k 31% ▂▃▅▂█ +27.4k · 5h 48% ━━━┃──── 2h 54m · 7d 52% ━━━━┃─── 3d 2h · cache 41m · $18.42 +$2.31 · 3 agents │
+╰─────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
 ```
 
-In the Desktop app it is one neutral capsule with the same blocks. Colour appears only where something needs attention: yellow for a warning, red for an alert.
+In the Desktop app it is one neutral capsule with the same blocks. On both, values are plain, labels and details are dim, and colour appears only where something needs attention: yellow for a warning, red for an alert.
 
 ## What each block says
 
-- **Context**: a weather glyph for how full the context window is, the tokens it holds, one bar per recent turn as tall as what that turn added, and the last turn's change. The weather goes Clear, Cloudy (from 30% of the window), Rain (55%), Storm (75%, yellow) and Compact soon (90%, red). In the Desktop app, hover the glyph for the share of the window.
+- **Context**: a glyph for how full the context window is, the tokens it holds, one bar per recent turn as tall as what that turn added, and the last turn's change. The weather goes Clear, Cloudy (from 30% of the window), Rain (55%), Storm (75%, yellow) and Compact soon (90%, red). The Desktop app draws the weather, and shows the share of the window when you hover it. The terminal draws a disc that fills through the same five steps (`○ ◔ ◑ ◕ ●`) and writes the share next to the tokens.
 - **5h / 7d**: the share of each account limit already used, and the time to its reset. The gauge marks where the clock stands in the window: a bar past the mark means you are using faster than time passes. Yellow when usage is more than 5 points ahead of the clock; red when it is 20 points ahead or 90% is used. In the Desktop app, hover the clock for the 5-hour reset time. These windows exist on a Claude subscription only. The newest reading is shared by every session on the machine, and a window that has already reset is hidden until its next reading.
 - **Cache**: the time before the main conversation's prompt cache lapses. Each request starts the countdown again. Yellow in the last fifth of the cache's life, and red `expired` once it has lapsed, with what the next message writes again on a large context. When a request had to write the prompt again, the block says why: `model changed`, `expired` or `prefix changed`.
 - **Cost**: what the session has cost, as `/cost` totals it, and what the last turn added. On a subscription this is the API-price equivalent, not a bill.
 - **Heavy thread**: shown from 300k tokens of context (red from 600k). Every request reads the whole context again, so a long thread pays for its length at each step. The figure is how many times a fresh thread's load you are carrying; a fresh thread's load is the lightest first turn of your last five new threads, and the figure is left out until one has been measured.
 - **Agents**: the number of subagents running, shown only while some run. In the Desktop app, hover the icon for what each is doing.
 
-When the terminal is too narrow for the whole line, the bars and details drop out first, then everything but the figures and the warnings.
+When the terminal is too narrow for the whole line, the bars and details drop out first, then everything but the figures and the warnings. Where the band has fewer than three rows to itself, the line is drawn without its border.
 
 ## How the cache countdown is worked out
 

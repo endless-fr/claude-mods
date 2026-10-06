@@ -26,21 +26,21 @@ test('draws the whole line where the terminal has room', async ($, on) => {
   const w = world(on)
   await busy($, w)
 
-  expect(await line($, 200)).toBe('☀ 212k █ +27.4k │ 5h ━━━┃──── 48% 2h 54m │ 7d ━━━━┃─── 52% 3d 2h │ cache 1h │ $18.42 +$2.31')
+  expect(await line($, 200)).toBe('○ 212k 21% █ +27.4k · 5h 48% ━━━┃──── 2h 54m · 7d 52% ━━━━┃─── 3d 2h · cache 1h · $18.42 +$2.31')
 })
 
 test('drops the bars and the detail when the terminal is too narrow for them', async ($, on) => {
   const w = world(on)
   await busy($, w)
 
-  expect(await line($, 80)).toBe('☀ 212k │ 5h 48% 2h 54m │ 7d 52% 3d 2h │ cache 1h │ $18.42')
+  expect(await line($, 80)).toBe('○ 212k 21% · 5h 48% 2h 54m · 7d 52% 3d 2h · cache 1h · $18.42')
 })
 
 test('keeps only the figures in a very narrow terminal', async ($, on) => {
   const w = world(on)
   await busy($, w)
 
-  expect(await line($, 40)).toBe('☀ 212k │ 5h 48% │ 7d 52%')
+  expect(await line($, 40)).toBe('○ 212k · 5h 48% · 7d 52%')
 })
 
 test('keeps a warning in a very narrow terminal', async ($, on) => {
@@ -51,14 +51,56 @@ test('keeps a warning in a very narrow terminal', async ($, on) => {
   expect(await line($, 40)).toContain('cache expired')
 })
 
-test('never draws a line wider than the terminal that can hold the figures', async ($, on) => {
+test('never draws a capsule wider than the terminal that can hold the figures', async ($, on) => {
   const w = world(on)
   await busy($, w)
 
   for (let columns = 30; columns <= 110; columns++) {
-    // One cell of padding on each side of the line.
-    expect((await line($, columns)).length).toBeLessThanOrEqual(columns - 2)
+    // The border and one cell of padding on each side of the line.
+    expect((await line($, columns)).length).toBeLessThanOrEqual(columns - 4)
   }
+})
+
+test('draws the terminal band as one dim capsule no wider than its line', async ($, on) => {
+  const w = world(on)
+  await busy($, w)
+
+  const ui = await band($, 'terminal')
+  const capsules = (await ui.findAll({ type: 'Box' })).filter(one => one.props.borderStyle === 'round')
+
+  expect(capsules).toHaveLength(1)
+  expect(capsules[0]?.props).toMatchObject({ borderDimColor: true, alignSelf: 'flex-start' })
+})
+
+test('draws the bare line where the band has no room for a border', async ($, on) => {
+  const w = world(on)
+  await busy($, w)
+
+  const ui = await band($, 'terminal', 200, 2)
+  const boxes = await ui.findAll({ type: 'Box' })
+
+  expect(boxes.filter(one => one.props.borderStyle)).toHaveLength(0)
+  expect(await line($, 200, 2)).toStartWith('○ 212k 21%')
+})
+
+test('gives the bare line the two cells the border would have taken', async ($, on) => {
+  const w = world(on)
+  await busy($, w)
+
+  expect(await line($, 97, 2)).toContain('━━━┃────')
+  expect(await line($, 97)).not.toContain('━━━┃────')
+})
+
+test('tells values from labels by dimness alone, never by weight', async ($, on) => {
+  const w = world(on)
+  await busy($, w)
+
+  const ui = await band($, 'terminal')
+  const texts = await ui.findAll({ type: 'Text' })
+
+  expect(texts.filter(one => one.props.bold)).toHaveLength(0)
+  expect((await ui.find({ type: 'Text', text: '$18.42' }))?.props.dimColor).toBeUndefined()
+  expect((await ui.find({ type: 'Text', text: '+$2.31' }))?.props.dimColor).toBe(true)
 })
 
 test('draws the desktop band as one capsule, its blocks split by hairlines', async ($, on) => {
@@ -89,7 +131,7 @@ test('starts over after a /clear', async ($, on) => {
   await busy($, w)
   await clear($, w)
 
-  expect(await line($, 200)).toBe('5h ━━━┃──── 48% 2h 54m │ 7d ━━━━┃─── 52% 3d 2h │ $18.42')
+  expect(await line($, 200)).toBe('5h 48% ━━━┃──── 2h 54m · 7d 52% ━━━━┃─── 3d 2h · $18.42')
 })
 
 test('takes the thread after a /clear for a fresh one', async ($, on) => {
@@ -108,7 +150,7 @@ test('brings a session back as it was left', async ($, on) => {
   await w.clock.advance(10 * MINUTE)
   await start($)
 
-  expect(await shown($, 'terminal')).toContain('☀ 212k █ +27.4k')
+  expect(await shown($, 'terminal')).toContain('○ 212k 21% █ +27.4k')
   expect(await shown($, 'terminal')).toContain('cache 50m')
   expect(await shown($, 'terminal')).toContain('$18.42 +$2.31')
 })
