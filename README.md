@@ -28,6 +28,7 @@ If a session is already open, run `/reload-plugins` in it to load the mod.
 
 - [changed-files](mods/changed-files): a pane that lists the files Claude changed since your last message, with each file's diff a click away.
 - [context-weather](mods/context-weather): one band above the prompt that shows how full the context is, how fast you are using your 5-hour and 7-day limits, when the prompt cache lapses, what the session has cost, and which subagents are running.
+- [prompt-corrector](mods/prompt-corrector): fixes the typos in your prompt before it is sent and puts the corrected version back in the prompt box, for you to send or edit. Code, paths, URLs and identifiers stay as typed. Jev picks the prompts with mistakes, Claude Haiku corrects them.
 - [session-recap](mods/session-recap): when you `/clear` a conversation, a pane opens with a recap of it as a card to share: time worked, turns, tool calls, files and lines changed, test runs and cost.
 
 ## Add a mod
