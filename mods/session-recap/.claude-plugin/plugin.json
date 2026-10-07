@@ -1,6 +1,6 @@
 {
   "name": "session-recap",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A recap of the conversation you just cleared, as a card to share: time worked, turns, tool calls, files and lines changed, test runs and cost.",
   "types": "./types/index.d.ts",
   "author": {

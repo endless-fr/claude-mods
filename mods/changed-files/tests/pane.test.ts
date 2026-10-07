@@ -9,7 +9,7 @@ const A = `${DIR}/a.txt`
 const B = `${DIR}/b.txt`
 
 /** The engine beneath: a disk in memory, which the write tools change and the mod reads back. */
-function world(on: On, opens: string[] = [], repo?: { head: Record<string, string> }) {
+function world(on: On, opens: string[] = [], repo?: { head: Record<string, string> }, cwd = DIR) {
   const disk = new Map<string, string>(Object.entries(repo?.head ?? {}))
   // Each write moves the file's time, as a disk does.
   const times = new Map<string, number>()
@@ -23,7 +23,8 @@ function world(on: On, opens: string[] = [], repo?: { head: Record<string, strin
     if (e.tool === 'Bash') {
       // Just enough of a shell on the disk in memory: `cat >` and `cat >>`
       // with a here-document, `rm` and `mv`.
-      const command = input.command as string
+      // A leading `cd` into the project, as Claude often writes it.
+      const command = (input.command as string).replace(/^cd \S+ && /, '')
       const at = (path: string) => (path.startsWith('/') ? path : `${DIR}/${path.replace(/^src\/\.\.\//, '')}`)
       const heredoc = /^cat (>>?) (\S+) <<'EOF'\n([\s\S]*)\nEOF$/.exec(command)
       if (heredoc) {
@@ -60,12 +61,15 @@ function world(on: On, opens: string[] = [], repo?: { head: Record<string, strin
     return { value: { isPlaced: true } as never }
   })
   on('prompt.submit', async (_$, e) => ({ text: e.text }))
-  on('session.cwd', async () => ({ value: DIR as never }))
+  on('session.cwd', async () => ({ value: cwd as never }))
   on('process.run', async (_$, e) => {
     const argv = e.argv as readonly string[]
     const ok = (stdout: string) => ({ value: { exitCode: 0, stdout, stderr: '', isStdoutTruncated: false, isStderrTruncated: false } as never })
     if (!repo || argv[0] !== 'git') return { value: { exitCode: 128, stdout: '', stderr: 'not a git repository', isStdoutTruncated: false, isStderrTruncated: false } as never }
-    if (argv[1] === 'rev-parse') return ok(`${DIR}\n`)
+    if (argv[1] === 'rev-parse') {
+      const folder = e.init?.cwd ?? cwd
+      return folder === DIR || folder.startsWith(`${DIR}/`) ? ok(`${DIR}\n`) : { value: { exitCode: 128, stdout: '', stderr: 'not a git repository', isStdoutTruncated: false, isStderrTruncated: false } as never }
+    }
     const relative = (path: string) => path.slice(DIR.length + 1)
     if (argv[1] === 'status') {
       const lines: string[] = []
@@ -265,4 +269,16 @@ test('in a repository with hundreds of changed files, a file the shell makes sti
   const drawn = JSON.stringify(await pane.drawn())
   expect(drawn).toContain('new.ts')
   expect(drawn).toContain('1 fichier')
+})
+
+test('a command that first goes into the repository with cd is followed there', async ($, on) => {
+  const G = `${DIR}/gone.txt`
+  // The session runs elsewhere; the command goes into the repository first.
+  world(on, [], { head: { [G]: 'old\n' } }, '/home')
+  await bash($, `cd ${DIR} && rm gone.txt`)
+  await bash($, `cd ${DIR} && cat > docs/notes.md <<'EOF'\n# Notes\nEOF`)
+  const pane = await $.ui.mount({ plugin: 'changed-files', surface: 'terminal', component: 'Pane', props: {} as never, requestId: 'changed-files' })
+  const drawn = JSON.stringify(await pane.drawn())
+  expect(drawn).toContain('gone.txt')
+  expect(drawn).toContain('notes.md')
 })

@@ -1,6 +1,6 @@
 {
   "name": "changed-files",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "A pane listing the files Claude changed since your last message, each one's diff a click away.",
   "types": "./types/index.d.ts",
   "author": {

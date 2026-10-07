@@ -50,21 +50,40 @@ function resolve(cwd: string, path: string): string {
   return `/${out.join('/')}`
 }
 
+/** Each command of the line with the folder it runs in: `cd` moves the ones after it. */
+function placedOf(line: string, cwd: string): { words: string[]; dir: string }[] {
+  const placed: { words: string[]; dir: string }[] = []
+  let dir = cwd
+  for (const words of commandsOf(line)) {
+    // `cd`, `cd ~` or `cd -` lead where the line does not say: left as is.
+    if (words[0] === 'cd' && words[1] !== undefined && !/^[~-]/.test(words[1]) && !/[$*?[]/.test(words[1])) dir = resolve(dir, words[1])
+    placed.push({ words, dir })
+  }
+
+  return placed
+}
+
+/** The folders a command line runs in: `cwd`, then every one a `cd` names. */
+export function foldersOf(line: string, cwd: string): string[] {
+  return [...new Set([cwd, ...placedOf(line, cwd).map(({ dir }) => dir)])]
+}
+
 /**
  * The paths a command line names for removal: the operands of `rm`, `unlink`
- * and `git rm`, and the sources of `mv` and `git mv`, from `cwd`. A pattern
- * (`*.log`) is left out: only the shell knows what it matched.
+ * and `git rm`, and the sources of `mv` and `git mv`, each from the folder a
+ * `cd` before it leads to. A pattern (`*.log`) is left out: only the shell
+ * knows what it matched.
  */
 export function removalsOf(line: string, cwd: string): string[] {
   const paths: string[] = []
-  for (let words of commandsOf(line)) {
+  for (let { words, dir } of placedOf(line, cwd)) {
     while (words[0] === 'sudo' || words[0] === 'command') words = words.slice(1)
     if (words[0] === 'git') words = words.slice(1)
     const [name, ...rest] = words
     if (name !== 'rm' && name !== 'unlink' && name !== 'mv') continue
     const operands = rest.filter(word => !word.startsWith('-'))
     const named = name === 'mv' ? operands.slice(0, -1) : operands
-    for (const path of named) if (!/[*?[]/.test(path)) paths.push(resolve(cwd, path))
+    for (const path of named) if (!/[*?[]/.test(path)) paths.push(resolve(dir, path))
   }
 
   return [...new Set(paths)]

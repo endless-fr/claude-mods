@@ -242,3 +242,22 @@ test('forgets the last outcome when the next recap opens', async ($, on) => {
 
   expect(await ui.find({ key: 'outcome' })).toBe(undefined)
 })
+
+test('shows the cleared conversation although /clear starts the session state over', async ($, on) => {
+  const w = world(on)
+  // A /clear starts a new session, whose state holds nothing of the last: what
+  // the mod wrote before the session id changed is not read back after it.
+  const writtenIn = new Map<string, string>()
+  on('state.set', async (_$, e, next) => {
+    writtenIn.set(e.key, w.state.id)
+    return next(e)
+  })
+  on('state.get', async (_$, e, next) => (writtenIn.get(e.key) === w.state.id ? next(e) : ({ value: { value: undefined, version: 0 } } as never)))
+
+  await work($, w)
+  await clear($, w)
+  expect(await shown($, 'terminal')).toContain('2 turns on Opus 5.5')
+
+  await command($, 'session-recap')
+  expect(await shown($, 'terminal')).toContain('2 turns on Opus 5.5')
+})

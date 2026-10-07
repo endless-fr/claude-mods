@@ -17,6 +17,10 @@ const outcome = atom({ plugin: 'session-recap', key: 'outcome' } as const, '')
 
 // True from the moment a /clear froze a recap until the command that typed it has run.
 let hasCleared = false
+// The conversation the last /clear ended. A /clear starts the session's state
+// over, so what session.end wrote there is gone by the time the pane draws:
+// the module carries it across, into the new conversation's state.
+let lastCleared: { recap: Recap; cost: number | null } | null = null
 
 const costOf = async ($: EngineInterface) => (await $.session.usage()).cost?.usd ?? null
 
@@ -47,6 +51,14 @@ async function freeze($: EngineInterface, isSoFar: boolean): Promise<{ recap: Re
 async function show($: EngineInterface, recap: Recap) {
   await update($, card, () => recap)
   await update($, outcome, () => '')
+}
+
+/** Puts the last cleared conversation into the new one's state, and starts its counts from the cost so far. */
+async function carry($: EngineInterface) {
+  if (!lastCleared) return
+  const { recap, cost } = lastCleared
+  if ((await read($, card)) === null) await show($, recap)
+  if ((await read($, stats)) === null) await update($, stats, counted => counted ?? emptyStats(cost))
 }
 
 const open = ($: EngineInterface) => $.ui.open({ id: PANE, title: TITLE, focus: true, closeOnEscape: true, holdToasts: true })
@@ -193,10 +205,14 @@ export const register: Register = on => {
     // The process goes on with a new conversation, and no session.start says so.
     const { recap, cost } = await freeze($, false)
     await update($, stats, () => emptyStats(cost))
-    if (recap) await show($, recap)
+    if (recap) {
+      lastCleared = { recap, cost }
+      await show($, recap)
+    }
     const ended = await next(e)
     if (recap) {
       hasCleared = true
+      await carry($)
       await open($).catch(() => undefined)
     }
 
@@ -208,7 +224,10 @@ export const register: Register = on => {
     const ran = await next(e)
     // Opened from session.end the pane is unasked for, and waits undrawn on a
     // narrow terminal. Here the person's own command is behind it.
-    if (hasCleared) await open($).catch(() => undefined)
+    if (hasCleared) {
+      await carry($)
+      await open($).catch(() => undefined)
+    }
     hasCleared = false
 
     return ran
@@ -217,14 +236,18 @@ export const register: Register = on => {
   on('command.run', { command: 'session-recap' }, async $ => {
     const { recap } = await freeze($, true)
     if (recap) await show($, recap)
-    else if ((await read($, card)) === null) return { text: NOTHING }
+    else if ((await read($, card)) === null) {
+      if (!lastCleared) return { text: NOTHING }
+      await show($, lastCleared.recap)
+    }
     const opened = await open($)
 
     return opened.isPlaced ? {} : { text: `Session Recap is open but not drawn yet: ${opened.reason}` }
   })
 
   on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e) => {
-    const recap = await read($, card)
+    // Until the new conversation's state holds it, the recap the module carried.
+    const recap = (await read($, card)) ?? lastCleared?.recap ?? null
     const said = await read($, outcome)
     if (!recap) {
       const { Box, Text } = $.ui.resolve(e)

@@ -3,7 +3,7 @@ import type { EngineInterface, Register, RenderInput } from 'claude-code'
 
 import type { ChangedFile } from '../types'
 import { altOf, headerSvg } from './card'
-import { dirtyIn, removalsOf } from './shell'
+import { dirtyIn, foldersOf, removalsOf } from './shell'
 import { badgeOf, barSvg, iconSvg, keyOf, relativeTo, split } from './designs'
 import { diffOf } from './diff'
 
@@ -187,11 +187,20 @@ export const register: Register = on => {
     const command = (e as { command?: unknown }).command
     if (typeof command !== 'string') return next(e)
     const cwd = await $.session.cwd().catch(() => '')
-    const root = cwd === '' ? null : ((await git($, ['rev-parse', '--show-toplevel'], cwd))?.trim() || null)
+    // The repositories the command works in: the session's, and any a `cd` leads to.
+    const roots = new Set<string>()
+    for (const folder of cwd === '' ? [] : foldersOf(command, cwd)) {
+      const root = (await git($, ['rev-parse', '--show-toplevel'], folder))?.trim()
+      if (root) roots.add(root)
+    }
+    const rootOf = (path: string) => [...roots].filter(root => path.startsWith(`${root}/`)).sort((a, b) => b.length - a.length)[0] ?? null
     const dirty = async () => {
-      if (root === null) return new Map<string, string>()
-      const status = await git($, ['status', '--porcelain', '-z', '--untracked-files=all'], root)
-      return dirtyIn(status ?? '', root)
+      const all = new Map<string, string>()
+      for (const root of roots) {
+        const status = await git($, ['status', '--porcelain', '-z', '--untracked-files=all'], root)
+        for (const [path, code] of dirtyIn(status ?? '', root)) all.set(path, code)
+      }
+      return all
     }
 
     const dirtyBefore = await dirty()
@@ -220,6 +229,12 @@ export const register: Register = on => {
     if (!isCrowded) for (const path of dirtyBefore.keys()) if (!dirtyAfter.has(path) && !seen.has(path)) touched.add(path)
     if (touched.size === 0) return ran
 
+    // A file git had clean: its text before is the index's.
+    const committed = async (path: string) => {
+      const root = rootOf(path)
+      if (dirtyBefore.has(path) || root === null) return null
+      return git($, ['show', `:${path.slice(root.length + 1)}`], root)
+    }
     const changes: Change[] = []
     for (const path of touched) {
       const known = seen.get(path)
@@ -231,9 +246,7 @@ export const register: Register = on => {
             ? known.stamp === null
               ? null
               : known.text
-            : dirtyBefore.has(path) || root === null
-              ? null
-              : await git($, ['show', `:${path.slice(root.length + 1)}`], root)
+            : await committed(path)
       const isThere = await exists($, path, true)
       const after = isThere ? await textOf($, path) : null
       // There but unreadable, or a folder: nothing to show.
