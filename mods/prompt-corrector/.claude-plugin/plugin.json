@@ -1,0 +1,29 @@
+{
+  "name": "prompt-corrector",
+  "version": "0.1.0",
+  "description": "Fixes the typos in your prompt before it is sent, leaving code, paths, URLs, commands and identifiers as typed: Jev spots the prompts with mistakes, Haiku corrects them, you send or edit the result.",
+  "author": {
+    "name": "endless"
+  },
+  "license": "MIT",
+  "repository": "https://github.com/endless-fr/claude-mods",
+  "homepage": "https://github.com/endless-fr/claude-mods/tree/main/mods/prompt-corrector",
+  "displayName": "Prompt Corrector",
+  "keywords": ["mod", "prompt", "spelling", "typos", "haiku", "jev"],
+  "userConfig": {
+    "jevApiKey": {
+      "type": "string",
+      "title": "Jev API key",
+      "description": "Your TypeSafe API key, which Jev uses to tell whether a prompt has mistakes.",
+      "sensitive": true,
+      "required": false
+    },
+    "threshold": {
+      "type": "number",
+      "title": "Mistake threshold",
+      "description": "How sure Jev must be that a prompt has mistakes before Haiku corrects it, from 0 to 1.",
+      "default": 0.5,
+      "required": false
+    }
+  }
+}

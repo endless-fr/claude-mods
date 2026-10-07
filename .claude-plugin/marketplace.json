@@ -19,6 +19,11 @@
       "name": "session-recap",
       "source": "./mods/session-recap",
       "description": "A recap of the conversation you just cleared, as a card to share: time worked, turns, tool calls, files and lines changed, test runs and cost."
+    },
+    {
+      "name": "prompt-corrector",
+      "source": "./mods/prompt-corrector",
+      "description": "Fixes the typos in your prompt before it is sent, leaving code, paths, URLs, commands and identifiers as typed: Jev spots the prompts with mistakes, Haiku corrects them, you send or edit the result."
     }
   ]
 }
